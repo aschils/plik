@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"time"
+	"unicode"
 )
 
 // ProviderGoogle for authentication
@@ -73,4 +74,64 @@ func (user *User) String() string {
 		str += " " + user.Email
 	}
 	return str
+}
+
+// CreateUserFromParams return a user object ready to be inserted in the metadata backend
+func CreateUserFromParams(userParams *User) (user *User, err error) {
+	if !IsValidProvider(userParams.Provider) {
+		return nil, fmt.Errorf("invalid provider")
+	}
+
+	if len(userParams.Login) < 4 {
+		return nil, fmt.Errorf("login is too short (min 4 chars)")
+	}
+
+	for _, r := range userParams.Login {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			return nil, fmt.Errorf("login must be alphanumerical")
+		}
+	}
+
+	if len(userParams.Password) < 8 {
+		return nil, fmt.Errorf("password is too short (min 8 chars)")
+	}
+
+	user = NewUser(userParams.Provider, userParams.Login)
+	user.Login = userParams.Login
+	user.Name = userParams.Name
+	user.Email = userParams.Email
+	user.IsAdmin = userParams.IsAdmin
+	user.MaxFileSize = userParams.MaxFileSize
+	user.MaxTTL = userParams.MaxTTL
+
+	hash, err := HashPassword(userParams.Password)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to hash password : %s\n", err)
+	}
+	user.Password = hash
+
+	return user, nil
+}
+
+// UpdateUser update a user object with the params
+//   - prevent to update provider, user ID or login
+//   - only update password if a new one is provided
+func UpdateUser(user *User, userParams *User) (err error) {
+	if len(userParams.Password) > 0 {
+		if len(userParams.Password) < 8 {
+			return fmt.Errorf("password is too short (min 8 chars)")
+		}
+		hash, err := HashPassword(userParams.Password)
+		if err != nil {
+			return fmt.Errorf("Unable to hash password : %s\n", err)
+		}
+		user.Password = hash
+	}
+
+	user.Name = userParams.Name
+	user.Email = userParams.Email
+	user.IsAdmin = userParams.IsAdmin
+	user.MaxFileSize = userParams.MaxFileSize
+	user.MaxTTL = userParams.MaxTTL
+	return nil
 }
