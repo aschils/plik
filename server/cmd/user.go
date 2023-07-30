@@ -153,9 +153,9 @@ func createUser(cmd *cobra.Command, args []string) {
 	if userParams.provider == common.ProviderLocal && userParams.password == "" {
 		userParams.password = common.GenerateRandomID(32)
 		fmt.Printf("Generated password for user %s is %s\n", userParams.login, userParams.password)
-		params.Password = userParams.password
 	}
-
+	params.Password = userParams.password
+	
 	user, err = common.CreateUserFromParams(params)
 	if err != nil {
 		fmt.Printf("unable to create user : %s\n", err)
